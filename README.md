@@ -56,21 +56,28 @@ PWA 首次在线打开 production build 并完成缓存后，可以离线打开�
 
 单元测试使用 Vitest 与 fake-indexeddb，当前 **47 项通过**。覆盖计时开始 / 暂停 / 恢复、避免重复 interval、延迟回调与训练结束、四档随机词调度、Session 创建、每日计划、跨标签页首次打开、日历统计、Blob 持久化、设置兼容和数据删除，以及内容库和录音资源生命周期。
 
-后台 UI 验证使用 Playwright，命令为 `npm run test:e2e`。最终用例数量与验收结果在发布前更新；此处不代表已完成 UI 验收或线上部署。production build 可通过 `npm run build` 重新验证。
+浏览器验证使用 Playwright，命令为 `npm run test:e2e`，包含 14 项桌面、手机触屏仿真、虚拟麦克风录音回放、历史与设置持久化、每日训练和离线 PWA 流程。真实手机的麦克风硬件与添加到主屏幕仍需在该设备上确认。production build 可通过 `npm run build` 重新验证。
 
-## GitHub Pages 发布准备
+## GitHub Pages
 
-仓库目标为新的公开 `vizzinicoslett-code/SpeakGym`。工作流 `.github/workflows/deploy.yml` 会在 `main` 推送后安装锁定依赖、运行单元测试、构建应用并部署 `dist` 到 GitHub Pages，使用 `/SpeakGym/` 资源路径。
+专用公开仓库：[vizzinicoslett-code/SpeakGym](https://github.com/vizzinicoslett-code/SpeakGym)。Pages 地址：[SpeakGym · 表达训练场](https://vizzinicoslett-code.github.io/SpeakGym/)。工作流 `.github/workflows/deploy.yml` 会在 `main` 推送后安装锁定依赖、运行单元测试、生产构建、运行浏览器测试；全部通过才部署 `dist`，使用 `/SpeakGym/` 资源路径。当前部署结果以仓库 [Actions](https://github.com/vizzinicoslett-code/SpeakGym/actions) 为准。
 
-**当前未完成发布，不应把预期地址视为已上线。** 本机已安装 Git Credential Manager，但尚无已保存的 GitHub 登录。先在本机终端执行并按浏览器指引登录：
+首次发布使用 Git Credential Manager 登录，再运行专用发布脚本：
 
 ```powershell
 git credential-manager github login
+pwsh -NoProfile -File .\scripts\publish-github.ps1
 ```
 
-登录后，通过 GitHub 网页或使用标准 Git 凭据的 GitHub REST API 创建上述公开仓库，再将当前项目推送到 `main`，并把仓库 Pages 发布来源设为 GitHub Actions。自动化调用应只在进程内读取和使用 Git Credential Manager 凭据；不要把 token 复制到聊天、源代码、配置文件或提交中。
+脚本只允许上述仓库，自动创建公开专用仓库、推送 `main`、配置 Pages 并触发工作流。凭据只在进程内使用，不写入源代码或输出。后续在 `main` 提交后使用 `git push origin main` 即可自动更新。详细权限与失败处理见 [发布说明](docs/DEPLOYMENT.md)。
 
-发布完成应检查 Actions 部署成功，并实际打开 Pages 地址验证资源、录音提示和离线缓存，再记录可用的线上链接。
+可以对实际公网版本重复执行相同的流程验收：
+
+```powershell
+$env:PLAYWRIGHT_BASE_URL = 'https://vizzinicoslett-code.github.io/SpeakGym/'
+npm run test:e2e
+Remove-Item Env:PLAYWRIGHT_BASE_URL
+```
 
 ## 范围与限制
 

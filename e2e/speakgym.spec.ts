@@ -407,3 +407,42 @@ test('生产 PWA：/SpeakGym/ 路径、manifest、SW 预缓存和断网重新打
   await expect(page.locator('.history-row')).toHaveCount(1);
   expect((await stored(page))[0]).toMatchObject({ completed: true, type: 'free', duration: 30 });
 });
+
+test.describe('手机触屏仿真', () => {
+  test.use({ isMobile: true, hasTouch: true, viewport: { width: 390, height: 844 } });
+
+  test('录音、回放、保存、刷新历史和独立时长设置均可使用', async ({ page }) => {
+    await home(page); await noOverflow(page);
+    expect(await page.evaluate(() => navigator.maxTouchPoints)).toBeGreaterThan(0);
+    await enter(page, 'free');
+    await page.getByRole('button', { name: '开始训练', exact: true }).tap();
+    await expect(page.getByRole('timer')).toBeVisible();
+    await expect(page.locator('.recording-indicator')).toContainText('正在本地录音');
+    await page.waitForTimeout(1_300);
+    await page.getByRole('button', { name: '结束训练', exact: true }).tap();
+    await expect(page.locator('.phase-review')).toBeVisible();
+    await noOverflow(page);
+    const audio = page.locator('audio');
+    await expect(audio).toHaveAttribute('src', /^blob:/);
+    await audio.evaluate(element => element.play());
+    await expect.poll(() => audio.evaluate(element => element.currentTime)).toBeGreaterThan(0);
+    await audio.evaluate(element => element.pause());
+    await page.getByRole('button', { name: '保存这次练习', exact: true }).tap();
+    await expect(page.locator('.welcome')).toBeVisible();
+    await page.getByRole('button', { name: '训练记录', exact: true }).tap();
+    await expect(page.locator('.history-row')).toHaveCount(1);
+    await page.reload();
+    await page.getByRole('button', { name: '训练记录', exact: true }).tap();
+    await page.locator('.history-row').tap();
+    await expect(page.getByRole('dialog').locator('audio')).toHaveAttribute('src', /^blob:/);
+    expect((await stored(page))[0].audio[0].size).toBeGreaterThan(100);
+    await page.getByRole('button', { name: '关闭', exact: true }).tap();
+    await page.getByRole('button', { name: '设置', exact: true }).tap();
+    await page.getByLabel('不停说默认时长', { exact: true }).selectOption('45');
+    await expect(page.getByLabel('不停说默认时长', { exact: true })).toBeEnabled();
+    await page.reload();
+    await enter(page, 'free');
+    await expect(page.getByRole('button', { name: '45 秒', exact: true })).toHaveClass(/selected/);
+    await noOverflow(page);
+  });
+});
