@@ -1,0 +1,26 @@
+{
+  "id": "./",
+  "name": "SpeakGym · 表达训练场",
+  "short_name": "SpeakGym",
+  "description": "每天几分钟，让表达更清晰、更稳定、更有表现力。",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8f8f4",
+  "theme_color": "#f8f8f4",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

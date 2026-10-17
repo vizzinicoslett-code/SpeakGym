@@ -1,0 +1,14 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+*.tsbuildinfo
+.local/
+recordings/
+*.webm
+*.wav
+*.mp3
+*.m4a
+*.ogg
+*.sqlite
+*.db
