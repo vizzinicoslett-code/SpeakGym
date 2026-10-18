@@ -11,7 +11,6 @@ import {
   RotateCcw,
   Shuffle,
   Square,
-  Volume2,
   X,
 } from "lucide-react";
 import type {
@@ -30,10 +29,19 @@ import { LocalRecorder, playCue, unlockCueAudio } from "../audio/recorder";
 import {
   questions,
   questionCategories,
-  tripleQuestions,
+  getTripleTopics,
 } from "../data/questions";
 import { words } from "../data/words";
-import { emotions, voiceLines } from "../data/voiceLines";
+import { voiceLines } from "../data/voiceLines";
+import {
+  getVoicePauseText,
+  speedPatterns,
+  voiceReviewLabels,
+  voiceScenes,
+  voiceSteps,
+} from "../data/voiceGuidance";
+import { VoiceABReview, VoiceDirection } from "./VoiceTrainingParts";
+import ThinkingHints from "./ThinkingHints";
 import { AudioPlayer } from "./AudioPlayer";
 import { formatTime, ModeIcon, modes, readableDuration, Toggle } from "../ui";
 
@@ -56,16 +64,6 @@ const reviews: Record<"structured" | "triple", string[]> = {
     "最后能够正常收尾",
   ],
 };
-const voiceSteps = [
-  { label: "自然说", hint: "像平时聊天一样，自然地把这句话说出来。" },
-  {
-    label: "关键词强调",
-    hint: "让高亮的词更突出。试试重读、放慢，或稍作停顿。",
-  },
-  { label: "语速变化", hint: "前半句稍快，后半句慢下来。听听节奏的变化。" },
-  { label: "练习停顿", hint: "在 / 处稍作停顿。让听的人有时间跟上。" },
-  { label: "情绪与意图", hint: "带着一个明确的表达意图，再说一次。" },
-];
 
 export default function Training({
   type,
@@ -81,7 +79,12 @@ export default function Training({
   onExit: () => void;
 }) {
   const [voiceLine, setVoiceLine] = useState(() => sample(voiceLines));
-  const [emotion, setEmotion] = useState(() => sample(emotions));
+  const [scene, setScene] = useState(() => sample(voiceScenes));
+  const [speedPattern, setSpeedPattern] = useState(() => sample(speedPatterns));
+  const [mainIdea, setMainIdea] = useState("");
+  const [hintsOpen, setHintsOpen] = useState(false);
+  const [promptHintsUsed, setPromptHintsUsed] = useState(false);
+  const [voiceDifferenceRating, setVoiceDifferenceRating] = useState<string>();
   const [category, setCategory] = useState("全部");
   const [config, setConfig] = useState<TrainingConfig>(() => ({
     type,
@@ -89,7 +92,7 @@ export default function Training({
       type === "structured"
         ? sample(questions).text
         : type === "triple"
-          ? sample(tripleQuestions)
+          ? sample(getTripleTopics(settings.tripleDifficulty)).text
           : type === "voice"
             ? ""
             : sample(words),
@@ -135,6 +138,24 @@ export default function Training({
   const roundDuration = type === "voice" ? 12 : config.duration;
   const finishRef = useRef<() => void>(() => {});
   const prompt = type === "voice" ? voiceLine.text : config.prompt;
+  const hintTags = questions.find(
+    (question) => question.text === config.prompt,
+  )?.hintTags;
+  const resetPromptHelp = () => {
+    setMainIdea("");
+    setHintsOpen(false);
+    setPromptHintsUsed(false);
+  };
+  const thinkingTools = type !== "voice" && (
+    <ThinkingHints
+      key={`${type}-${config.prompt}`}
+      type={type}
+      tags={hintTags}
+      open={hintsOpen}
+      onOpenChange={setHintsOpen}
+      onUse={() => setPromptHintsUsed(true)}
+    />
+  );
 
   useEffect(() => {
     mounted.current = true;
@@ -265,6 +286,7 @@ export default function Training({
     setTakes([]);
     setTakeIndex(0);
     setReview({});
+    setVoiceDifferenceRating(undefined);
     setSaveAudio(true);
     if (type === "triple") {
       const next: InterruptWord[] = [];
@@ -375,15 +397,19 @@ export default function Training({
     setMessage("");
     setVisibleWord("");
     setAppeared([]);
+    setHintsOpen(false);
+    setPromptHintsUsed(false);
     if (shuffle) changePrompt();
   };
   const changePrompt = () => {
+    resetPromptHelp();
     if (type === "voice") {
       const next = sample(
         voiceLines.filter((line) => line.text !== voiceLine.text),
       );
       setVoiceLine(next);
-      setEmotion(sample(emotions));
+      setScene(sample(voiceScenes));
+      setSpeedPattern(sample(speedPatterns));
     } else
       setConfig((previous) => ({
         ...previous,
@@ -397,7 +423,11 @@ export default function Training({
                 ),
               ).text
             : type === "triple"
-              ? sample(tripleQuestions.filter((q) => q !== previous.prompt))
+              ? sample(
+                  getTripleTopics(previous.difficulty).filter(
+                    (topic) => topic.text !== previous.prompt,
+                  ),
+                ).text
               : sample(words.filter((w) => w !== previous.prompt)),
       }));
   };
@@ -420,7 +450,11 @@ export default function Training({
         ? Object.fromEntries(
             reviews[type].map((label) => [label, !!review[label]]),
           )
-        : review;
+        : type === "voice"
+          ? Object.fromEntries(
+              voiceReviewLabels.map((label) => [label, !!review[label]]),
+            )
+          : review;
     const session = createSession({
       type,
       startedAt: startAt.current,
@@ -432,6 +466,10 @@ export default function Training({
       audio: saveAudio ? takes : [],
       completed: true,
       dailyId: daily?.id,
+      mainIdea: type === "triple" ? mainIdea.trim() || undefined : undefined,
+      promptHintsUsed: type !== "voice" ? promptHintsUsed : undefined,
+      voiceDifferenceRating:
+        type === "voice" ? voiceDifferenceRating : undefined,
     });
     session.id = sessionId.current;
     try {
@@ -449,7 +487,8 @@ export default function Training({
   actionRef.current = { begin, togglePause, nextTake, save, reset, exit };
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement;
+      if (!(event.target instanceof Element)) return;
+      const target = event.target;
       if (
         target.closest(
           'input, textarea, select, [contenteditable="true"], dialog',
@@ -459,6 +498,11 @@ export default function Training({
         event.metaKey ||
         event.repeat ||
         busy
+      )
+        return;
+      if (
+        (event.code === "Space" || event.key === "Enter") &&
+        target.closest("button, a, summary, audio")
       )
         return;
       if (event.code === "Space") {
@@ -488,7 +532,7 @@ export default function Training({
   }, [phase, busy, config.prepSeconds]);
 
   const renderVoiceLine = () => {
-    if (takeIndex === 3) return voiceLine.pauseText;
+    if (takeIndex === 2) return getVoicePauseText(voiceLine);
     if (takeIndex !== 1) return voiceLine.text;
     const [before, ...after] = voiceLine.text.split(voiceLine.keyword);
     return (
@@ -572,6 +616,7 @@ export default function Training({
                     value={category}
                     onChange={(e) => {
                       const next = e.target.value;
+                      resetPromptHelp();
                       setCategory(next);
                       setConfig((previous) => ({
                         ...previous,
@@ -591,6 +636,36 @@ export default function Training({
                 </div>
               )}
             </section>
+            {thinkingTools}
+            {type === "triple" && (
+              <section className="main-idea-setup">
+                <h2>
+                  先想一句主线 <span>可选</span>
+                </h2>
+                <p>如果只允许你说一句话，你最想表达什么？</p>
+                <label htmlFor="main-idea">我的主线</label>
+                <input
+                  id="main-idea"
+                  type="text"
+                  maxLength={160}
+                  value={mainIdea}
+                  onChange={(event) => setMainIdea(event.target.value)}
+                  autoComplete="off"
+                  placeholder="写一句你自己的想法，也可以跳过"
+                />
+                <button
+                  className="text-button"
+                  disabled={busy}
+                  onClick={() => {
+                    setMainIdea("");
+                    void begin();
+                  }}
+                >
+                  跳过主线，开始训练
+                  <ArrowRight size={14} />
+                </button>
+              </section>
+            )}
             <div className="training-options">
               {type === "structured" && (
                 <Option
@@ -616,7 +691,7 @@ export default function Training({
               )}
               {type === "triple" && (
                 <div className="option-group">
-                  <span>干扰难度</span>
+                  <span>训练难度 · 话题与干扰</span>
                   <div className="segmented difficulty-options">
                     {(["easy", "normal", "hard", "chaos"] as Difficulty[]).map(
                       (level) => (
@@ -625,15 +700,17 @@ export default function Training({
                           className={
                             config.difficulty === level ? "selected" : ""
                           }
-                          onClick={() =>
+                          onClick={() => {
+                            resetPromptHelp();
                             setConfig({
                               ...config,
                               difficulty: level,
+                              prompt: sample(getTripleTopics(level)).text,
                               duration:
                                 daily?.duration ??
                                 difficultyConfig[level].duration,
-                            })
-                          }
+                            });
+                          }}
                         >
                           {level[0].toUpperCase() + level.slice(1)}
                         </button>
@@ -644,6 +721,15 @@ export default function Training({
                     {daily
                       ? "今日训练：2 分钟，保持主线，持续练习融入随机词。"
                       : difficultyConfig[config.difficulty].description}
+                  </p>
+                  <p className="topic-difficulty-note">
+                    {config.difficulty === "easy"
+                      ? "具体、个人化话题 · 从身边的事开始"
+                      : config.difficulty === "normal"
+                        ? "轻观点话题 · 说出你的选择与理由"
+                        : config.difficulty === "hard"
+                          ? "抽象话题 · 练习解释概念与关系"
+                          : "全部话题 · 随机挑战"}
                   </p>
                 </div>
               )}
@@ -742,22 +828,28 @@ export default function Training({
                 ? renderVoiceLine()
                 : prompt}
             </h1>
+            {type === "triple" && mainIdea.trim() && (
+              <p className="main-idea-reminder">我的主线：{mainIdea.trim()}</p>
+            )}
             {phase === "preparing" ? (
-              <div className="prepare-screen">
-                <span className="prepare-number">
-                  {config.prepSeconds === null ? "∞" : remaining}
-                </span>
-                <p>不必想好每一句，有一个方向就够了。</p>
-                {config.prepSeconds === null && (
-                  <button
-                    className="button primary"
-                    onClick={() => setPhase("speaking")}
-                  >
-                    想好了，开始讲话
-                    <ArrowRight size={18} />
-                  </button>
-                )}
-              </div>
+              <>
+                <div className="prepare-screen">
+                  <span className="prepare-number">
+                    {config.prepSeconds === null ? "∞" : remaining}
+                  </span>
+                  <p>不必想好每一句，有一个方向就够了。</p>
+                  {config.prepSeconds === null && (
+                    <button
+                      className="button primary"
+                      onClick={() => setPhase("speaking")}
+                    >
+                      想好了，开始讲话
+                      <ArrowRight size={18} />
+                    </button>
+                  )}
+                </div>
+                {thinkingTools}
+              </>
             ) : (
               <>
                 <div
@@ -820,19 +912,11 @@ export default function Training({
                   </>
                 )}
                 {type === "voice" && (
-                  <div className="voice-direction">
-                    {takeIndex === 4 ? (
-                      <>
-                        <span>试着带上这个意图</span>
-                        <strong>「{emotion}」</strong>
-                      </>
-                    ) : (
-                      <>
-                        <Volume2 size={21} />
-                        <p>{voiceSteps[takeIndex].hint}</p>
-                      </>
-                    )}
-                  </div>
+                  <VoiceDirection
+                    takeIndex={takeIndex}
+                    speedPattern={speedPattern}
+                    scene={scene}
+                  />
                 )}
                 {type === "free" && (
                   <div className="free-direction">
@@ -906,8 +990,10 @@ export default function Training({
               <span>下一遍 · {voiceSteps[takeIndex + 1].label}</span>
               <p>
                 {takeIndex + 1 === 4
-                  ? `用「${emotion}」的感觉再说一次。`
-                  : voiceSteps[takeIndex + 1].hint}
+                  ? scene.text
+                  : takeIndex + 1 === 3
+                    ? `${speedPattern.label}。${voiceSteps[3].hint}`
+                    : voiceSteps[takeIndex + 1].hint}
               </p>
             </div>
             <button
@@ -1028,30 +1114,33 @@ export default function Training({
               </section>
             )}
             {type === "voice" && (
-              <section className="review-section">
-                <h2>五种表达，听出变化了吗？</h2>
-                <p className="muted small">
-                  依次试听，留意重音、节奏和意图的区别。
-                </p>
-                <div className="review-checks">
-                  {[
-                    "关键词比平时更突出",
-                    "语速和停顿有了变化",
-                    "表达出了不同的情绪或意图",
-                  ].map((label) => (
-                    <label key={label}>
-                      <input
-                        type="checkbox"
-                        checked={!!review[label]}
-                        onChange={(e) =>
-                          setReview({ ...review, [label]: e.target.checked })
-                        }
-                      />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-              </section>
+              <>
+                <VoiceABReview
+                  takes={takes}
+                  rating={voiceDifferenceRating}
+                  onRatingChange={setVoiceDifferenceRating}
+                />
+                <section className="review-section">
+                  <h2>今天我有做到</h2>
+                  <p className="muted small">
+                    依次试听，留意重音、节奏和意图的区别。
+                  </p>
+                  <div className="review-checks">
+                    {voiceReviewLabels.map((label) => (
+                      <label key={label}>
+                        <input
+                          type="checkbox"
+                          checked={!!review[label]}
+                          onChange={(e) =>
+                            setReview({ ...review, [label]: e.target.checked })
+                          }
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </section>
+              </>
             )}
             <section className="review-section">
               <div className="section-heading">

@@ -35,7 +35,7 @@ export const modes = {
     english: "Voice Wake-up",
     short: "让声音多一点表情",
     description:
-      "同一句话，试着说出五种变化。练习重音、语速、停顿，还有你的表达意图。",
+      "同一句话，把重音、停顿、语速和场景差异做大。回听自然版本与场景版本。",
     color: "purple",
     icon: AudioLines,
     number: "03",

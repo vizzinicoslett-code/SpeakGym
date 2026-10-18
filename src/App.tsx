@@ -246,7 +246,7 @@ export default function App() {
                 安装到桌面
                 <ArrowLink />
               </button>
-              <span className="version">SPEAKGYM / V1.0</span>
+              <span className="version">SPEAKGYM / V1.1</span>
             </div>
           </aside>
           <div className="workspace">
@@ -686,6 +686,19 @@ function HistoryPage({
           ) : (
             <>
               <p className="detail-prompt">{selected.prompt}</p>
+              {selected.mainIdea && (
+                <p className="history-main-idea">
+                  我的主线：{selected.mainIdea}
+                </p>
+              )}
+              {selected.voiceDifferenceRating && (
+                <p className="muted small">
+                  Take 1 / Take 5：{selected.voiceDifferenceRating}
+                </p>
+              )}
+              {selected.promptHintsUsed && (
+                <p className="muted small">本轮使用过思路提示</p>
+              )}
               <p className="muted small">
                 {new Date(selected.startedAt).toLocaleString("zh-CN")} ·{" "}
                 {readableDuration(selected.duration)}
@@ -928,7 +941,7 @@ function SettingsPage({
           <br />
           你的表达，只留在你的设备里。
         </p>
-        <span>VERSION 1.0 · 第一阶段</span>
+        <span>VERSION 1.1 · 轻量提示与声音对比</span>
       </div>
       {confirm && (
         <Modal

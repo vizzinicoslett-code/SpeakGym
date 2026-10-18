@@ -37,8 +37,98 @@ function session(startedAt = Date.now()): TrainingSession {
   });
 }
 
+async function seedVersionOneData(
+  records: TrainingSession[],
+  settings: unknown,
+): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("speakgym", 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const database = request.result;
+      const version = database.version;
+      const tx = database.transaction(["sessions", "settings"], "readwrite");
+      for (const record of records) tx.objectStore("sessions").put(record);
+      tx.objectStore("settings").put(settings, "app");
+      tx.oncomplete = () => {
+        database.close();
+        resolve(version);
+      };
+      tx.onabort = () => {
+        database.close();
+        reject(tx.error);
+      };
+    };
+  });
+}
+
 describe("IndexedDB persistence", () => {
   beforeEach(async () => clearAllData());
+
+  it("defaults to Easy only when no preferences have been saved", async () => {
+    expect(defaultSettings.tripleDifficulty).toBe("easy");
+    expect((await getSettings()).tripleDifficulty).toBe("easy");
+  });
+
+  it.each(["normal", "hard"] as const)(
+    "preserves an existing %s preference instead of replacing it with the fresh default",
+    async (difficulty) => {
+      const configured = {
+        ...defaultSettings,
+        defaultDuration: 90,
+        freeDuration: 45,
+        autoRecord: false,
+        cueSound: false,
+        tripleDifficulty: difficulty,
+        autoDaily: true,
+      };
+      await saveSettings(configured);
+      expect(await getSettings()).toEqual(configured);
+    },
+  );
+
+  it("reads earlier version 1 records without new observations and keeps audio and preferences intact", async () => {
+    const earlier = session(1_000);
+    const configured = {
+      ...defaultSettings,
+      defaultDuration: 90,
+      freeDuration: 60,
+      autoRecord: false,
+      cueSound: false,
+      tripleDifficulty: "normal" as const,
+      autoDaily: true,
+    };
+    expect(await seedVersionOneData([earlier], configured)).toBe(1);
+    const saved = await getSessions();
+    expect(saved).toHaveLength(1);
+    expect({ ...saved[0], audio: [] }).toEqual({ ...earlier, audio: [] });
+    expect(saved[0]).not.toHaveProperty("mainIdea");
+    expect(saved[0]).not.toHaveProperty("promptHintsUsed");
+    expect(saved[0]).not.toHaveProperty("voiceDifferenceRating");
+    expect(await saved[0].audio[0].blob.text()).toBe("local audio");
+    expect(saved[0].audio[0].blob.type).toBe("audio/webm");
+    expect(await getSettings()).toEqual(configured);
+    expect(await getStorageUsage()).toEqual({
+      audioBytes: 11,
+      sessionCount: 1,
+    });
+  });
+
+  it("round-trips new optional observations with the existing audio Blob", async () => {
+    const observed = {
+      ...session(),
+      mainIdea: "练习的关键，是每天留出一点真正开口的时间。",
+      promptHintsUsed: false,
+      voiceDifferenceRating: "有一点区别",
+    };
+    await saveSession(observed);
+    const [saved] = await getSessions();
+    expect(saved.mainIdea).toBe(observed.mainIdea);
+    expect(saved.promptHintsUsed).toBe(false);
+    expect(saved.voiceDifferenceRating).toBe(observed.voiceDifferenceRating);
+    expect(await saved.audio[0].blob.text()).toBe("local audio");
+    expect(saved.audio[0].blob.type).toBe("audio/webm");
+  });
 
   it("persists full sessions including Blob audio and returns newest first", async () => {
     const first = session(1_000);

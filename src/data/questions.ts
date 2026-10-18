@@ -1,7 +1,11 @@
+import type { Difficulty } from "../types";
+import type { HintTag } from "./promptHints";
+
 export interface Question {
   id: string;
   category: string;
   text: string;
+  hintTags: HintTag[];
 }
 
 // Each prompt is written individually so it can support a point, a reason, and a next step.
@@ -172,86 +176,202 @@ export const questionCategories: string[] = questionGroups.map(
   (group) => group.category,
 );
 
+const categoryHintTags: Record<string, HintTag[]> = {
+  日常生活: ["experience", "cause", "result", "action"],
+  学习: ["experience", "example", "cause", "action"],
+  人际关系: ["experience", "example", "opposite", "action"],
+  观点: ["definition", "comparison", "result", "action"],
+  经历: ["experience", "cause", "result", "action"],
+  抽象思考: ["definition", "opposite", "comparison", "example"],
+  科技: ["definition", "example", "result", "action"],
+  校园: ["experience", "example", "result", "action"],
+};
+
+// Override category defaults when a question calls for a particular way into the topic.
+const questionHintOverrides: Record<string, HintTag[]> = {
+  "question-life-04": ["experience", "cause", "opposite", "action"],
+  "question-life-06": ["experience", "comparison", "example", "result"],
+  "question-life-08": ["experience", "comparison", "result", "action"],
+  "question-life-10": ["experience", "comparison", "example", "action"],
+  "question-life-12": ["experience", "opposite", "result", "action"],
+  "question-learning-03": ["definition", "example", "opposite", "action"],
+  "question-learning-04": ["experience", "comparison", "example", "action"],
+  "question-learning-05": ["definition", "comparison", "example", "action"],
+  "question-learning-07": ["experience", "comparison", "cause", "action"],
+  "question-learning-10": ["experience", "comparison", "example", "action"],
+  "question-learning-13": ["experience", "cause", "result", "example"],
+  "question-relationships-01": ["experience", "comparison", "result", "action"],
+  "question-relationships-05": ["experience", "opposite", "result", "example"],
+  "question-relationships-09": [
+    "definition",
+    "experience",
+    "example",
+    "opposite",
+  ],
+  "question-relationships-12": ["experience", "comparison", "cause", "action"],
+  "question-opinions-02": ["experience", "opposite", "result", "action"],
+  "question-opinions-04": ["definition", "example", "opposite", "result"],
+  "question-opinions-05": ["experience", "example", "result", "action"],
+  "question-opinions-08": ["experience", "example", "cause", "result"],
+  "question-opinions-11": ["experience", "example", "opposite", "action"],
+  "question-opinions-12": ["experience", "cause", "opposite", "result"],
+  "question-experiences-04": ["experience", "example", "result", "action"],
+  "question-experiences-05": ["experience", "comparison", "cause", "result"],
+  "question-experiences-08": ["experience", "example", "cause", "action"],
+  "question-experiences-11": ["experience", "comparison", "result", "action"],
+  "question-experiences-14": ["experience", "opposite", "cause", "action"],
+  "question-thinking-03": ["definition", "experience", "cause", "example"],
+  "question-thinking-04": ["definition", "experience", "comparison", "example"],
+  "question-thinking-05": ["experience", "opposite", "cause", "action"],
+  "question-thinking-08": ["definition", "experience", "comparison", "action"],
+  "question-thinking-11": ["definition", "example", "opposite", "action"],
+  "question-thinking-12": ["definition", "comparison", "experience", "action"],
+  "question-thinking-13": ["experience", "comparison", "cause", "example"],
+  "question-technology-01": ["experience", "comparison", "cause", "result"],
+  "question-technology-03": ["experience", "comparison", "example", "action"],
+  "question-technology-05": ["definition", "comparison", "opposite", "action"],
+  "question-technology-06": ["experience", "opposite", "example", "action"],
+  "question-technology-08": ["experience", "cause", "result", "action"],
+  "question-technology-10": ["experience", "example", "comparison", "action"],
+  "question-technology-13": ["experience", "comparison", "cause", "action"],
+  "question-campus-04": ["experience", "comparison", "example", "action"],
+  "question-campus-05": ["experience", "example", "opposite", "result"],
+  "question-campus-06": ["experience", "comparison", "cause", "action"],
+  "question-campus-10": ["experience", "comparison", "result", "action"],
+  "question-campus-12": ["definition", "example", "opposite", "action"],
+};
+
 export const questions: Question[] = questionGroups.flatMap((group) =>
-  group.items.map((text, index) => ({
-    id: `question-${group.key}-${String(index + 1).padStart(2, "0")}`,
-    category: group.category,
-    text,
-  })),
+  group.items.map((text, index) => {
+    const id = `question-${group.key}-${String(index + 1).padStart(2, "0")}`;
+    return {
+      id,
+      category: group.category,
+      text,
+      hintTags: [
+        ...(questionHintOverrides[id] ?? categoryHintTags[group.category]),
+      ],
+    };
+  }),
 );
 
-// Broad topics leave enough room for an unexpected word without changing the main point.
-export const tripleQuestions: string[] = [
-  "你认为大学最重要的能力是什么？",
-  "怎样才能把一个小习惯坚持一个月？",
-  "你觉得怎样的周末才算休息好了？",
-  "如何让一个陌生人迅速了解你的家乡？",
-  "你会怎样说服朋友开始一项运动？",
-  "你理想中的学习空间是什么样的？",
-  "你认为一个可靠的人有哪些特点？",
-  "怎样让一场小组讨论真正产生结果？",
-  "你会如何安排完全属于自己的一天？",
-  "你认为旅行最有价值的收获是什么？",
-  "怎样面对一个暂时看不到进展的目标？",
-  "你会怎样向朋友推荐一本喜欢的书？",
-  "一个人怎样才能更好地管理注意力？",
-  "你认为什么样的朋友值得长期交往？",
-  "如果给生活做减法，你会从哪里开始？",
-  "如何把一件复杂的事讲给第一次接触的人听？",
-  "你认为休息为什么也是一件重要的事？",
-  "怎样让一个普通的日子过得有意思？",
-  "你会如何帮助刚到一个新城市的人适应生活？",
-  "你觉得独立生活最需要学会什么？",
-  "如何在紧张的时候把话说清楚？",
-  "你认为合作中最需要提前说清楚什么？",
-  "怎样对一个不合理的请求说不？",
-  "你会怎样向未来的自己介绍现在的生活？",
-  "你认为学习一项技能最好的起点是什么？",
-  "怎样才能减少临睡前无目的地刷手机？",
-  "你理想中的校园应该给学生什么？",
-  "如何判断一条建议适不适合自己？",
-  "你会怎样组织一场让大家都愿意参加的聚会？",
-  "你认为自信通常来自哪里？",
-  "怎样在忙碌的时候仍然照顾好自己？",
-  "你想向别人介绍的一种生活方式是什么？",
-  "如何把一次失败变成下一次行动的帮助？",
-  "你认为好奇心对成年人有什么价值？",
-  "你会如何给一位刚入学的新生建议？",
-  "怎样在意见不同的时候继续好好交流？",
-  "你觉得什么值得我们放慢速度去做？",
-  "如何让工作或学习环境更舒服？",
-  "你会怎样解释长期坚持的价值？",
-  "你认为一个好的计划应该具备什么？",
-  "怎样让第一次见面的聊天自然继续？",
-  "你会如何安排一笔意外获得的小收入？",
-  "你认为人为什么需要一些没有功利目的的爱好？",
-  "如何在信息很多的时候做出自己的判断？",
-  "你会怎样推荐一种简单的放松方式？",
-  "你认为与家人相处最需要注意什么？",
-  "怎样给一个努力过却没有成功的人鼓励？",
-  "你会怎样介绍一项自己想学的新技能？",
-  "你认为城市里最值得保留的公共空间是什么？",
-  "如何让一次短暂的沟通更有效？",
-  "你会怎样为一个重要的选择做好准备？",
-  "你觉得怎样才算真正听懂了别人？",
-  "如何让普通物品用得更久？",
-  "你会如何度过一个没有网络的下午？",
-  "你认为年轻人应该怎样对待不确定性？",
-  "怎样让一个人愿意听完你的观点？",
-  "你会怎样培养持续阅读的习惯？",
-  "你认为值得纪念的小事有哪些？",
-  "如何在一项共同任务中建立信任？",
-  "你会怎样介绍你最喜欢的一个季节？",
-  "你认为科技应该优先解决生活中的什么问题？",
-  "怎样从一次让人尴尬的经历中走出来？",
-  "你会怎样帮助一个总觉得时间不够的人？",
-  "你认为主动表达感谢会带来什么变化？",
-  "如何在保持个人节奏的同时与他人合作？",
-  "你会怎样向朋友介绍你珍惜的一种品质？",
-  "你认为什么样的反馈最能帮助人成长？",
-  "怎样从零开始整理一个堆积已久的问题？",
-  "你会怎样说明保护个人时间的重要性？",
-  "你认为什么时候应该勇敢尝试一次？",
-  "如何让一个短期目标和长期方向联系起来？",
-  "你会怎样介绍每天练习表达的意义？",
+export interface TripleTopic {
+  id: string;
+  text: string;
+  difficulty: Exclude<Difficulty, "chaos">;
+}
+
+// Keep the original 72 prompts in their original order, with an individual difficulty.
+// Easy stays concrete and personal; broader viewpoints use Normal and abstract ideas Hard.
+const curatedTripleTopics: [string, TripleTopic["difficulty"]][] = [
+  ["你认为大学最重要的能力是什么？", "normal"],
+  ["怎样才能把一个小习惯坚持一个月？", "normal"],
+  ["你觉得怎样的周末才算休息好了？", "easy"],
+  ["如何让一个陌生人迅速了解你的家乡？", "easy"],
+  ["你会怎样说服朋友开始一项运动？", "normal"],
+  ["你理想中的学习空间是什么样的？", "easy"],
+  ["你认为一个可靠的人有哪些特点？", "normal"],
+  ["怎样让一场小组讨论真正产生结果？", "normal"],
+  ["你会如何安排完全属于自己的一天？", "easy"],
+  ["你认为旅行最有价值的收获是什么？", "normal"],
+  ["怎样面对一个暂时看不到进展的目标？", "normal"],
+  ["你会怎样向朋友推荐一本喜欢的书？", "easy"],
+  ["一个人怎样才能更好地管理注意力？", "normal"],
+  ["你认为什么样的朋友值得长期交往？", "normal"],
+  ["如果给生活做减法，你会从哪里开始？", "normal"],
+  ["如何把一件复杂的事讲给第一次接触的人听？", "normal"],
+  ["你认为休息为什么也是一件重要的事？", "normal"],
+  ["怎样让一个普通的日子过得有意思？", "easy"],
+  ["你会如何帮助刚到一个新城市的人适应生活？", "normal"],
+  ["你觉得独立生活最需要学会什么？", "normal"],
+  ["如何在紧张的时候把话说清楚？", "normal"],
+  ["你认为合作中最需要提前说清楚什么？", "normal"],
+  ["怎样对一个不合理的请求说不？", "normal"],
+  ["你会怎样向未来的自己介绍现在的生活？", "easy"],
+  ["你认为学习一项技能最好的起点是什么？", "normal"],
+  ["怎样才能减少临睡前无目的地刷手机？", "normal"],
+  ["你理想中的校园应该给学生什么？", "normal"],
+  ["如何判断一条建议适不适合自己？", "normal"],
+  ["你会怎样组织一场让大家都愿意参加的聚会？", "easy"],
+  ["你认为自信通常来自哪里？", "hard"],
+  ["怎样在忙碌的时候仍然照顾好自己？", "normal"],
+  ["你想向别人介绍的一种生活方式是什么？", "easy"],
+  ["如何把一次失败变成下一次行动的帮助？", "normal"],
+  ["你认为好奇心对成年人有什么价值？", "hard"],
+  ["你会如何给一位刚入学的新生建议？", "normal"],
+  ["怎样在意见不同的时候继续好好交流？", "normal"],
+  ["你觉得什么值得我们放慢速度去做？", "normal"],
+  ["如何让工作或学习环境更舒服？", "easy"],
+  ["你会怎样解释长期坚持的价值？", "hard"],
+  ["你认为一个好的计划应该具备什么？", "normal"],
+  ["怎样让第一次见面的聊天自然继续？", "normal"],
+  ["你会如何安排一笔意外获得的小收入？", "easy"],
+  ["你认为人为什么需要一些没有功利目的的爱好？", "hard"],
+  ["如何在信息很多的时候做出自己的判断？", "normal"],
+  ["你会怎样推荐一种简单的放松方式？", "easy"],
+  ["你认为与家人相处最需要注意什么？", "normal"],
+  ["怎样给一个努力过却没有成功的人鼓励？", "normal"],
+  ["你会怎样介绍一项自己想学的新技能？", "easy"],
+  ["你认为城市里最值得保留的公共空间是什么？", "normal"],
+  ["如何让一次短暂的沟通更有效？", "normal"],
+  ["你会怎样为一个重要的选择做好准备？", "normal"],
+  ["你觉得怎样才算真正听懂了别人？", "normal"],
+  ["如何让普通物品用得更久？", "easy"],
+  ["你会如何度过一个没有网络的下午？", "easy"],
+  ["你认为年轻人应该怎样对待不确定性？", "hard"],
+  ["怎样让一个人愿意听完你的观点？", "normal"],
+  ["你会怎样培养持续阅读的习惯？", "normal"],
+  ["你认为值得纪念的小事有哪些？", "easy"],
+  ["如何在一项共同任务中建立信任？", "normal"],
+  ["你会怎样介绍你最喜欢的一个季节？", "easy"],
+  ["你认为科技应该优先解决生活中的什么问题？", "normal"],
+  ["怎样从一次让人尴尬的经历中走出来？", "normal"],
+  ["你会怎样帮助一个总觉得时间不够的人？", "normal"],
+  ["你认为主动表达感谢会带来什么变化？", "normal"],
+  ["如何在保持个人节奏的同时与他人合作？", "normal"],
+  ["你会怎样向朋友介绍你珍惜的一种品质？", "hard"],
+  ["你认为什么样的反馈最能帮助人成长？", "normal"],
+  ["怎样从零开始整理一个堆积已久的问题？", "normal"],
+  ["你会怎样说明保护个人时间的重要性？", "normal"],
+  ["你认为什么时候应该勇敢尝试一次？", "hard"],
+  ["如何让一个短期目标和长期方向联系起来？", "normal"],
+  ["你会怎样介绍每天练习表达的意义？", "normal"],
+  // New Easy topics are small enough to answer from daily life without forming a theory.
+  ["你最喜欢的一门课是什么，为什么？", "easy"],
+  ["你平时怎样安排从早到晚的一天？", "easy"],
+  ["你最近正在学习什么新东西？", "easy"],
+  ["你最喜欢吃的一道菜是什么？", "easy"],
+  ["你最喜欢的一项运动是什么？", "easy"],
+  ["你最近完成的一件小事是什么？", "easy"],
+  ["你最喜欢学校里的哪个地方？", "easy"],
+  ["你觉得自己的宿舍生活怎么样？", "easy"],
+  ["你和朋友最近一起做了什么？", "easy"],
+  ["你最近参与的一个项目是什么？", "easy"],
+  ["你平时会怎样度过课间十分钟？", "easy"],
+  ["最近哪次出门让你印象深刻？", "easy"],
+  // More abstract concepts remain available when a user deliberately selects Hard.
+  ["在你看来，一个人怎样才算独立？", "hard"],
+  ["你觉得坚持和固执之间的区别是什么？", "hard"],
+  ["你会如何解释尊重一个人意味着什么？", "hard"],
+  ["在你看来，一个人怎样才算成熟？", "hard"],
+  ["你认为成功应该用什么标准来定义？", "hard"],
 ];
+
+export const tripleTopics: TripleTopic[] = curatedTripleTopics.map(
+  ([text, difficulty], index) => ({
+    id: `triple-topic-${String(index + 1).padStart(3, "0")}`,
+    text,
+    difficulty,
+  }),
+);
+
+// Keep the original public string-array API for existing integrations.
+export const tripleQuestions: string[] = tripleTopics.map(
+  (topic) => topic.text,
+);
+
+export function getTripleTopics(difficulty: Difficulty): TripleTopic[] {
+  return difficulty === "chaos"
+    ? [...tripleTopics]
+    : tripleTopics.filter((topic) => topic.difficulty === difficulty);
+}

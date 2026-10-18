@@ -11,7 +11,7 @@ export const defaultSettings: AppSettings = Object.freeze({
   freeDuration: 30,
   autoRecord: true,
   cueSound: true,
-  tripleDifficulty: "normal" as Difficulty,
+  tripleDifficulty: "easy" as Difficulty,
   autoDaily: false,
 });
 

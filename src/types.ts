@@ -24,6 +24,9 @@ export interface TrainingSession {
   audio: AudioTake[];
   completed: boolean;
   dailyId?: string;
+  mainIdea?: string;
+  promptHintsUsed?: boolean;
+  voiceDifferenceRating?: string;
 }
 export interface AppSettings {
   defaultDuration: number;

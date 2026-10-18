@@ -34,6 +34,24 @@ describe("training sessions", () => {
     );
   });
 
+  it("preserves optional practice observations while accepting earlier sessions without them", () => {
+    const observed = createSession({
+      ...input,
+      mainIdea: "我最想表达的是，长期坚持比短暂的热情更重要。",
+      promptHintsUsed: true,
+      voiceDifferenceRating: "有一点区别",
+    });
+    expect(observed.mainIdea).toBe(
+      "我最想表达的是，长期坚持比短暂的热情更重要。",
+    );
+    expect(observed.promptHintsUsed).toBe(true);
+    expect(observed.voiceDifferenceRating).toBe("有一点区别");
+    const earlier = createSession(input);
+    expect(earlier).not.toHaveProperty("mainIdea");
+    expect(earlier).not.toHaveProperty("promptHintsUsed");
+    expect(earlier).not.toHaveProperty("voiceDifferenceRating");
+  });
+
   it("plans all four modes in order with a five-minute total", () => {
     expect(dailyPlan.map((step) => step.type)).toEqual([
       "free",
