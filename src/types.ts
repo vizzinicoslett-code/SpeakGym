@@ -27,6 +27,7 @@ export interface TrainingSession {
   mainIdea?: string;
   promptHintsUsed?: boolean;
   voiceDifferenceRating?: string;
+  promptId?: string;
 }
 export interface AppSettings {
   defaultDuration: number;

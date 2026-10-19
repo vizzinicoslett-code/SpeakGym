@@ -42,6 +42,8 @@ import {
 } from "../data/voiceGuidance";
 import { VoiceABReview, VoiceDirection } from "./VoiceTrainingParts";
 import ThinkingHints from "./ThinkingHints";
+import ReferenceReview from "./ReferenceReview";
+import { getPromptId } from "../core/promptIds";
 import { AudioPlayer } from "./AudioPlayer";
 import { formatTime, ModeIcon, modes, readableDuration, Toggle } from "../ui";
 
@@ -397,6 +399,7 @@ export default function Training({
     setMessage("");
     setVisibleWord("");
     setAppeared([]);
+    setReview({});
     setHintsOpen(false);
     setPromptHintsUsed(false);
     if (shuffle) changePrompt();
@@ -447,9 +450,12 @@ export default function Training({
     setError("");
     const completeReview =
       type === "structured" || type === "triple"
-        ? Object.fromEntries(
-            reviews[type].map((label) => [label, !!review[label]]),
-          )
+        ? {
+            ...review,
+            ...Object.fromEntries(
+              reviews[type].map((label) => [label, !!review[label]]),
+            ),
+          }
         : type === "voice"
           ? Object.fromEntries(
               voiceReviewLabels.map((label) => [label, !!review[label]]),
@@ -460,6 +466,7 @@ export default function Training({
       startedAt: startAt.current,
       duration: Math.round(actualDuration.current),
       prompt,
+      promptId: getPromptId(type, prompt),
       difficulty: type === "triple" ? config.difficulty : undefined,
       interruptWords: appeared,
       selfReview: completeReview,
@@ -491,7 +498,7 @@ export default function Training({
       const target = event.target;
       if (
         target.closest(
-          'input, textarea, select, [contenteditable="true"], dialog',
+          'input, textarea, select, [contenteditable="true"], dialog, .reference-review',
         ) ||
         event.altKey ||
         event.ctrlKey ||
@@ -1141,6 +1148,22 @@ export default function Training({
                   </div>
                 </section>
               </>
+            )}
+            {type !== "voice" && (
+              <ReferenceReview
+                key={sessionId.current}
+                context={{
+                  type,
+                  prompt,
+                  promptId: getPromptId(type, prompt),
+                  interruptWords: appeared,
+                  completed: true,
+                }}
+                selfReview={review}
+                onCompare={(key, checked) =>
+                  setReview((previous) => ({ ...previous, [key]: checked }))
+                }
+              />
             )}
             <section className="review-section">
               <div className="section-heading">

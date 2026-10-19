@@ -43,6 +43,7 @@ import {
 } from "./ui";
 import { AudioPlayer } from "./components/AudioPlayer";
 import Training from "./components/Training";
+import ReferenceReview from "./components/ReferenceReview";
 
 type Page = "home" | "history" | "settings";
 type Daily = { id: string; index: number; seconds: number; rounds: number };
@@ -726,6 +727,19 @@ function HistoryPage({
                   </div>
                 ))}
               </div>
+              {selected.type !== "voice" && (
+                <ReferenceReview
+                  key={selected.id}
+                  context={{
+                    type: selected.type,
+                    prompt: selected.prompt,
+                    promptId: selected.promptId,
+                    interruptWords: selected.interruptWords,
+                    completed: selected.completed,
+                  }}
+                  selfReview={selected.selfReview}
+                />
+              )}
               {selected.audio.length ? (
                 <div className="audio-grid">
                   {selected.audio.map((take) => (

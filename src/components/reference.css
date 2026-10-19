@@ -1,0 +1,146 @@
+.reference-review {
+  margin: 27px 0 31px;
+}
+.reference-review .reference-toggle {
+  font-size: 13px;
+  color: #547447;
+  padding: 9px 0;
+}
+.reference-toggle .expanded {
+  transform: rotate(180deg);
+}
+.reference-panel {
+  padding: 19px;
+  margin-top: 8px;
+  border: 1px solid #dbe4d2;
+  border-radius: 8px;
+  background: #f5f8f0;
+}
+.reference-panel > h2 {
+  font-size: 16px;
+  color: #344c29;
+  margin: 0 0 9px;
+}
+.reference-panel .reference-note {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #65795a;
+  margin: 0 0 15px;
+}
+.reference-panel .reference-scroll {
+  max-height: 300px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+  scrollbar-color: #bdcbb0 transparent;
+  padding: 17px 18px;
+  border: 1px solid #e0e7d9;
+  border-radius: 5px;
+  background: #fff;
+  color: #384d2e;
+}
+.reference-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+.reference-scroll::-webkit-scrollbar-thumb {
+  background: #bdcbb0;
+  border-radius: 5px;
+}
+.reference-scroll p {
+  font-size: 14px;
+  line-height: 2;
+  margin: 0 0 15px;
+  overflow-wrap: anywhere;
+}
+.reference-scroll h3 {
+  font-size: 13px;
+  color: #52703f;
+  margin: 18px 0 9px;
+}
+.reference-scroll h3:first-child {
+  margin-top: 0;
+}
+.reference-scroll .reference-outline {
+  font-size: 12px;
+  color: #637d51;
+  line-height: 1.9;
+}
+.reference-scroll .reference-main-idea {
+  border-left: 2px solid #a7bc95;
+  background: #f4f8ef;
+  padding: 9px 12px;
+}
+.reference-bridge {
+  border-top: 1px solid #e5ecdf;
+  padding: 13px 0 2px;
+}
+.reference-bridge h4 {
+  font-size: 14px;
+  color: #456932;
+  margin: 0 0 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.reference-bridge h4 > span {
+  font-size: 10px;
+  font-weight: 400;
+  color: #849477;
+}
+.reference-return {
+  color: #627a50;
+}
+.reference-return b {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #6d8859;
+  margin-bottom: 3px;
+}
+.reference-comparison {
+  margin-top: 21px;
+  border-top: 1px solid #e5ecdf;
+  padding-top: 2px;
+}
+.reference-comparison label {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin: 13px 0;
+  font-size: 12px;
+  line-height: 1.8;
+  color: #647957;
+}
+.reference-comparison label input {
+  margin-top: 2px;
+}
+.reference-status {
+  font-size: 12px;
+  color: #6a7b5f;
+  line-height: 1.8;
+}
+@media (max-width: 760px) {
+  .reference-panel {
+    padding: 15px 13px;
+  }
+  .reference-panel .reference-scroll {
+    max-height: 250px;
+    padding: 14px 12px;
+  }
+  .reference-scroll p {
+    font-size: 13px;
+  }
+  .reference-panel .reference-note {
+    font-size: 11px;
+  }
+  .reference-comparison label {
+    font-size: 12px;
+  }
+  .reference-review .reference-toggle {
+    font-size: 12px;
+  }
+}
